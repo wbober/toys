@@ -77,14 +77,16 @@ def submit(hcm, args):
         print("Invalid timespec")
         return
 
-    hcm.click('HcmEmployeeSelfServiceWorkspace', 1.0)
-    hcm.click('etoTSTimesheetCreate', 1.0)
+    hcm.click_js('HcmEmployeeSelfServiceWorkspace', 1.0)
+    hcm.click_js('etoTSTimesheetCreate', 1.0)
     if (args.date):
         datefrom = hcm.get_element_by_controlname('DateFrom', '//input[@type="text"]')
         datefrom.clear()
         datefrom.send_keys(args.date)
     hcm.click('OK')
     hcm.click_js('NewLine')
+    time.sleep(0.5)
+
     hcm.input('ProjId', match.group(1))
     hcm.input('CatergoryName', match.group(2))
     
@@ -106,8 +108,12 @@ def get_chrome_driver(args):
     return webdriver.Chrome(chrome_options=options)
 
 def get_firefox_driver(args):
+    from selenium.webdriver.firefox.options import Options
     path = glob.glob(os.path.expanduser('~/.mozilla/firefox/*.default'))
-    return webdriver.Firefox(firefox_profile=path[0])
+    options = Options()
+    if not args.v:
+        options.headless = True
+    return webdriver.Firefox(firefox_profile=path[0], options=options)
 
 def main(args):
     if args.driver == 'firefox':
