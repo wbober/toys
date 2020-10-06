@@ -18,6 +18,17 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
 
+ALIASES = {
+    "mgmt" : {
+        "project": 4451,
+        "category": 11110
+    },
+    "sick" : {
+        "project": 9000,
+        "category": 94100
+    }
+}
+
 class HcmEmployeeSelfService():
     def __init__(self, driver):
         self.driver = driver
@@ -51,8 +62,8 @@ class HcmEmployeeSelfService():
     def get_element_by_controlname(self, controlname, extra=''):
         print(f'get {controlname}')
         xpath = f"//*[@data-dyn-controlname='{controlname}']{extra}"
-        # element = self.wait.until(expected_conditions.element_to_be_clickable((By.XPATH, xpath)));
-        element = self.wait.until(expected_conditions.presence_of_element_located((By.XPATH, xpath)))
+        # element = self.wait.until(expected_conditions.presence_of_element_located((By.XPATH, xpath)))
+        element = self.wait.until(expected_conditions.element_to_be_clickable((By.XPATH, xpath)));
         return element
 
 def aprove(hcm, args):
@@ -71,9 +82,32 @@ def aprove(hcm, args):
         time.sleep(0.5)
         items -= 1
 
-def submit(hcm, args):
+def parse_timespec(timespec, aliases):
     match = re.match("(\d+) (\d+) ([0-8]) ([0-8]) ([0-8]) ([0-8]) ([0-8])", args.timespec)
-    if not match:
+    if match:
+        return match.groups()
+
+    match = re.match("(\w+) ([0-8]) ([0-8]) ([0-8]) ([0-8]) ([0-8])", args.timespec)
+    if match and match.group(1) in aliases:
+        return (aliases[match.group(1)]["project"],
+                aliases[match.group(1)]["category"],
+                match.group(2),
+                match.group(3),
+                match.group(4),
+                match.group(5),
+                match.group(6))
+
+    match = re.match("(\w+)", args.timespec)
+    if match and match.group(1) in aliases:
+        return (aliases[match.group(1)]["project"],
+                aliases[match.group(1)]["category"],
+                8, 8, 8, 8, 8)
+    
+    return None
+
+def submit(hcm, args):
+    timespec = parse_timespec(args.timespec, ALIASES)
+    if not timespec:
         print("Invalid timespec")
         return
 
@@ -87,11 +121,11 @@ def submit(hcm, args):
     hcm.click_js('NewLine')
     time.sleep(0.5)
 
-    hcm.input('ProjId', match.group(1))
-    hcm.input('CatergoryName', match.group(2))
+    hcm.input('ProjId', timespec[0])
+    hcm.input('CatergoryName', timespec[1])
     
     for day in range(1, 6):
-        hcm.input(f'TSTimesheetLineWeek_Hours_{day}', match.group(2 + day))
+        hcm.input(f'TSTimesheetLineWeek_Hours_{day}', timespec[1 + day])
 
     hcm.click_js('TSTimesheetTableWorkflowDropDialog')
     hcm.click('PromotedAction1')
@@ -113,6 +147,7 @@ def get_firefox_driver(args):
     options = Options()
     if not args.v:
         options.headless = True
+    print(f"Using profile {path[0]}")
     return webdriver.Firefox(firefox_profile=path[0], options=options)
 
 def main(args):
