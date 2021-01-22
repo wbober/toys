@@ -61,7 +61,8 @@ def upload_comments(args, comments):
 
     commits = pr.get_commits()
     for comment in comments:
-        create_comment(pr, f"[{comment['type']}]\n\n{comment['comment']}",
+        comment_text=comment['comment'].encode().decode('unicode_escape')
+        create_comment(pr, f"[{comment['type']}]\n[{args.c}]\n\n{comment_text}",
                        commits.reversed[0],
                        comment['file'],
                        int(comment['line']))
@@ -72,10 +73,13 @@ if __name__ == "__main__":
     argparse.add_argument("repo", help="Github repository")
     argparse.add_argument("pull_req", help="Pull Request number", type=int)
     argparse.add_argument("csv", help="CSV file with comments")
+    argparse.add_argument("-c", help="Company name")
 
     args = argparse.parse_args()
     print(args)
 
-    with open(args.csv) as csvfile:
+    comments = []
+
+    with open(args.csv, newline='') as csvfile:
         comments = csv.DictReader(csvfile)
         upload_comments(args, comments)
